@@ -1,3 +1,7 @@
+const multer = require("multer");
+const FormData = require("form-data");
+const upload = multer();
+
 const mongoose = require("mongoose");
 const Scan = require("./models/Scan");
 
@@ -13,6 +17,27 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+
+app.post("/scan-image", upload.single("image"), async (req, res) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", req.file.buffer, "image.png");
+
+    const response = await axios.post(
+      "http://localhost:8000/scan-image",
+      formData,
+      {
+        headers: formData.getHeaders(),
+      }
+    );
+
+    res.json(response.data);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Image scan failed" });
+  }
+});
 
 app.post("/analyze", async (req, res) => {
   try {
@@ -31,6 +56,31 @@ app.post("/analyze", async (req, res) => {
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.post("/scan-image", upload.single("image"), async (req, res) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", req.file.buffer, {
+      filename: "image.png",
+      contentType: "image/png",
+    });
+
+    const response = await axios.post(
+      "http://localhost:8000/scan-image",
+      formData,
+      {
+        headers: formData.getHeaders(),
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+      }
+    );
+
+    res.json(response.data);
+  } catch (err) {
+    console.error("IMAGE ERROR:", err.response?.data || err.message);
+    res.status(500).json({ error: "Image scan failed" });
   }
 });
 

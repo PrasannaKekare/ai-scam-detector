@@ -30,7 +30,7 @@ function App() {
 
       highlighted = highlighted.replace(
         regex,
-        `<span style="background-color:red;color:white;padding:2px;border-radius:4px;">$1</span>`
+        `<span style="background-color:red;color:white;padding:2px;border-radius:4px;">$1</span>`,
       );
     });
 
@@ -48,6 +48,23 @@ function App() {
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
+      <input
+        type="file"
+        className="mb-4"
+        onChange={async (e) => {
+          const file = e.target.files[0];
+          const formData = new FormData();
+          formData.append("image", file);
+
+          const res = await axios.post(
+            "http://localhost:5000/scan-image",
+            formData,
+          );
+
+          setText(res.data.extracted_text);
+          setResult(res.data.analysis);
+        }}
+      />
 
       <button
         onClick={analyze}
@@ -64,8 +81,8 @@ function App() {
               result.label === "High Risk"
                 ? "bg-red-700"
                 : result.label === "Medium Risk"
-                ? "bg-yellow-600"
-                : "bg-green-700"
+                  ? "bg-yellow-600"
+                  : "bg-green-700"
             }`}
           >
             <p className="text-lg font-bold">{result.label}</p>
@@ -78,8 +95,8 @@ function App() {
                   result.label === "High Risk"
                     ? "bg-red-500"
                     : result.label === "Medium Risk"
-                    ? "bg-yellow-400"
-                    : "bg-green-500"
+                      ? "bg-yellow-400"
+                      : "bg-green-500"
                 }`}
                 style={{ width: `${result.score}%` }}
               ></div>
@@ -100,10 +117,7 @@ function App() {
               <strong>Detected Signals:</strong>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {result.highlights?.map((h, i) => (
-                  <span
-                    key={i}
-                    className="bg-black px-2 py-1 rounded text-sm"
-                  >
+                  <span key={i} className="bg-black px-2 py-1 rounded text-sm">
                     {h}
                   </span>
                 ))}

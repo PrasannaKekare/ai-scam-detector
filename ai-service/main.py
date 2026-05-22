@@ -1,14 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel
+from PIL import Image
+import pytesseract
+import io
 import re
 
 app = FastAPI()
 
+# 🔥 IMPORTANT (path to tesseract)
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
 class Message(BaseModel):
     text: str
 
-SUSPICIOUS_WORDS = ["urgent", "immediately", "act now", "otp", "password", "bank", "verify", "click"]
-
+# ------------------------
+# RULE-BASED ANALYSIS
+# ------------------------
 def analyze_scam(text):
     score = 0
     reasons = []
@@ -16,39 +23,26 @@ def analyze_scam(text):
 
     text_lower = text.lower()
 
-    urgency_words = ["urgent", "immediately", "act now"]
-    financial_words = ["bank", "otp", "password", "account", "verify"]
+    urgency_words = ["urgent", "immediately", "act now", "turant"]
+    financial_words = ["bank", "otp", "password", "account", "verify", "aapka"]
 
-    # Urgency
     for word in urgency_words:
         if word in text_lower:
             score += 20
             reasons.append("Creates urgency pressure")
             highlights.append(word)
 
-    # Financial
     for word in financial_words:
         if word in text_lower:
             score += 25
             reasons.append("Requests sensitive info")
             highlights.append(word)
 
-    # URL detection
     urls = re.findall(r"http[s]?://\S+", text)
     if urls:
         score += 30
         reasons.append("Contains external link")
         highlights.extend(urls)
-
-        # Fake domain check (basic)
-        for url in urls:
-            if any(x in url for x in ["bit.ly", "tinyurl", "free", "bonus"]):
-                score += 15
-                reasons.append("Suspicious shortened or bait link")
-
-    # Too many triggers
-    if len(reasons) >= 3:
-        score += 10
 
     score = min(score, 100)
 
@@ -67,6 +61,26 @@ def analyze_scam(text):
         "urls": urls
     }
 
+# ------------------------
+# TEXT INPUT API
+# ------------------------
 @app.post("/detect-scam")
 def detect_scam(msg: Message):
     return analyze_scam(msg.text)
+
+# ------------------------
+# IMAGE OCR API
+# ------------------------
+@app.post("/scan-image")
+async def scan_image(file: UploadFile = File(...)):
+    contents = await file.read()
+    image = Image.open(io.BytesIO(contents)).convert("RGB")
+
+    extracted_text = pytesseract.image_to_string(image)
+
+    result = analyze_scam(extracted_text)
+
+    return {
+        "extracted_text": extracted_text,
+        "analysis": result
+    }
